@@ -2,100 +2,249 @@ package main
 
 import (
 	"fmt"
-	"net/http"
-
-	"os"
+	"math"
+	"strconv"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/fogleman/ease"
+	"github.com/lucasb-eyer/go-colorful"
 )
 
-const url = "https://charm.sh/"
+const (
+	progressBarWidth  = 71
+	progressFullChar  = "█"
+	progressEmptyChar = "░"
+	dotChar           = " • "
+)
+
+var (
+	keywordStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("211"))
+	subtleStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
+	ticksStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("79"))
+	checkboxStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("212"))
+	progressEmpty = subtleStyle.Render(progressEmptyChar)
+	dotStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("236")).Render(dotChar)
+	mainStyle     = lipgloss.NewStyle().MarginLeft(2)
+
+	// Gradient colors we'll use for the progress bar
+	ramp = makeRampStyles("#B14FFF", "#00FFA3", progressBarWidth)
+)
+
+func main() {
+	initialModel := model{0, false, 10, 0, 0, false, false}
+	p := tea.NewProgram(initialModel)
+	if _, err := p.Run(); err != nil {
+		fmt.Println("could not start program:", err)
+	}
+}
+
+type (
+	tickMsg  struct{}
+	frameMsg struct{}
+)
+
+func tick() tea.Cmd {
+	return tea.Tick(time.Second, func(time.Time) tea.Msg {
+		return tickMsg{}
+	})
+}
+
+func frame() tea.Cmd {
+	return tea.Tick(time.Second/60, func(time.Time) tea.Msg {
+		return frameMsg{}
+	})
+}
 
 type model struct {
-	status int
-	err    error
+	Choice   int
+	Chosen   bool
+	Ticks    int
+	Frames   int
+	Progress float64
+	Loaded   bool
+	Quitting bool
 }
-
-func checkServer() tea.Msg {
-
-	// Create an HTTP client and make a GET request.
-	c := &http.Client{Timeout: 10 * time.Second}
-	res, err := c.Get(url)
-
-	if err != nil {
-		// There was an error making our request. Wrap the error we received
-		// in a message and return it.
-		return errMsg{err}
-	}
-	// We received a response from the server. Return the HTTP status code
-	// as a message.
-	return statusMsg(res.StatusCode)
-}
-
-type statusMsg int
-
-type errMsg struct{ err error }
-
-// For messages that contain errors it's often handy to also implement the
-// error interface on the message.
-func (e errMsg) Error() string { return e.err.Error() }
 
 func (m model) Init() tea.Cmd {
-	return checkServer
+	return tick()
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-
-	case statusMsg:
-		// The server returned a status message. Save it to our model. Also
-		// tell the Bubble Tea runtime we want to exit because we have nothing
-		// else to do. We'll still be able to render a final view with our
-		// status message.
-		m.status = int(msg)
-		return m, tea.Quit
-
-	case errMsg:
-		// There was an error. Note it in the model. And tell the runtime
-		// we're done and want to quit.
-		m.err = msg
-		return m, tea.Quit
-
-	case tea.KeyMsg:
-		// Ctrl+c exits. Even with short running programs it's good to have
-		// a quit key, just in case your logic is off. Users will be very
-		// annoyed if they can't exit.
-		if msg.Type == tea.KeyCtrlC {
+	if msg, ok := msg.(tea.KeyMsg); ok {
+		k := msg.String()
+		if k == "q" || k == "esc" || k == "ctrl+c" {
+			m.Quitting = true
 			return m, tea.Quit
 		}
 	}
 
-	// If we happen to get any other messages, don't do anything.
+	if !m.Chosen {
+		return updateChoices(msg, m)
+	}
+	return updateChosen(msg, m)
+}
+
+// The main view, which just calls the appropriate sub-view
+func (m model) View() string {
+	var s string
+	if m.Quitting {
+		return "\n  See you later!\n\n"
+	}
+	if !m.Chosen {
+		s = choicesView(m)
+	} else {
+		s = chosenView(m)
+	}
+	return mainStyle.Render("\n" + s + "\n\n")
+}
+
+func updateChoices(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "j", "down":
+			m.Choice++
+			if m.Choice > 3 {
+				m.Choice = 3
+			}
+		case "k", "up":
+			m.Choice--
+			if m.Choice < 0 {
+				m.Choice = 0
+			}
+		case "enter":
+			m.Chosen = true
+			return m, frame()
+		}
+
+	case tickMsg:
+		if m.Ticks == 0 {
+			m.Quitting = true
+			return m, tea.Quit
+		}
+		m.Ticks--
+		return m, tick()
+	}
+
 	return m, nil
 }
 
-func (m model) View() string {
-	// If there's an error, print it out and don't do anything else.
-	if m.err != nil {
-		return fmt.Sprintf("\nWe had some trouble: %v\n\n", m.err)
+func updateChosen(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
+	switch msg.(type) {
+	case frameMsg:
+		if !m.Loaded {
+			m.Frames++
+			m.Progress = ease.OutBounce(float64(m.Frames) / float64(100))
+			if m.Progress >= 1 {
+				m.Progress = 1
+				m.Loaded = true
+				m.Ticks = 3
+				return m, tick()
+			}
+			return m, frame()
+		}
+
+	case tickMsg:
+		if m.Loaded {
+			if m.Ticks == 0 {
+				m.Quitting = true
+				return m, tea.Quit
+			}
+			m.Ticks--
+			return m, tick()
+		}
 	}
 
-	// Tell the user we're doing something.
-	s := fmt.Sprintf("Checking %s ... ", url)
-
-	// When the server responds with a status, add it to the current line.
-	if m.status > 0 {
-		s += fmt.Sprintf("%d %s!", m.status, http.StatusText(m.status))
-	}
-
-	// Send off whatever we came up with above for rendering.
-	return "\n" + s + "\n\n"
+	return m, nil
 }
 
-func main() {
-	if _, err := tea.NewProgram(model{}).Run(); err != nil {
-		fmt.Printf("Uh oh, there was an error: %v\n", err)
-		os.Exit(1)
+func choicesView(m model) string {
+	c := m.Choice
+
+	tpl := "What to do today?\n\n"
+	tpl += "%s\n\n"
+	tpl += "Program quits in %s seconds\n\n"
+	tpl += subtleStyle.Render("j/k, up/down: select") + dotStyle +
+		subtleStyle.Render("enter: choose") + dotStyle +
+		subtleStyle.Render("q, esc: quit")
+
+	choices := fmt.Sprintf(
+		"%s\n%s\n%s\n%s",
+		checkbox("Plant carrots", c == 0),
+		checkbox("Go to the market", c == 1),
+		checkbox("Read something", c == 2),
+		checkbox("See friends", c == 3),
+	)
+
+	return fmt.Sprintf(tpl, choices, ticksStyle.Render(strconv.Itoa(m.Ticks)))
+}
+
+func chosenView(m model) string {
+	var msg string
+
+	switch m.Choice {
+	case 0:
+		msg = fmt.Sprintf("Carrot planting?\n\nCool, we'll need %s and %s...", keywordStyle.Render("libgarden"), keywordStyle.Render("vegeutils"))
+	case 1:
+		msg = fmt.Sprintf("A trip to the market?\n\nOkay, then we should install %s and %s...", keywordStyle.Render("marketkit"), keywordStyle.Render("libshopping"))
+	case 2:
+		msg = fmt.Sprintf("Reading time?\n\nOkay, cool, then we’ll need a library. Yes, an %s.", keywordStyle.Render("actual library"))
+	default:
+		msg = fmt.Sprintf("It’s always good to see friends.\n\nFetching %s and %s...", keywordStyle.Render("social-skills"), keywordStyle.Render("conversationutils"))
 	}
+
+	label := "Downloading..."
+	if m.Loaded {
+		label = fmt.Sprintf("Downloaded. Exiting in %s seconds...", ticksStyle.Render(strconv.Itoa(m.Ticks)))
+	}
+
+	return msg + "\n\n" + label + "\n" + progressbar(m.Progress) + "%"
+}
+
+func checkbox(label string, checked bool) string {
+	if checked {
+		return checkboxStyle.Render("[x] " + label)
+	}
+	return fmt.Sprintf("[ ] %s", label)
+}
+
+func progressbar(percent float64) string {
+	w := float64(progressBarWidth)
+
+	fullSize := int(math.Round(w * percent))
+	var fullCells string
+	for i := 0; i < fullSize; i++ {
+		fullCells += ramp[i].Render(progressFullChar)
+	}
+
+	emptySize := int(w) - fullSize
+	emptyCells := strings.Repeat(progressEmpty, emptySize)
+
+	return fmt.Sprintf("%s%s %3.0f", fullCells, emptyCells, math.Round(percent*100))
+}
+
+func makeRampStyles(colorA, colorB string, steps float64) (s []lipgloss.Style) {
+	cA, _ := colorful.Hex(colorA)
+	cB, _ := colorful.Hex(colorB)
+
+	for i := 0.0; i < steps; i++ {
+		c := cA.BlendLuv(cB, i/steps)
+		s = append(s, lipgloss.NewStyle().Foreground(lipgloss.Color(colorToHex(c))))
+	}
+	return
+}
+
+func colorToHex(c colorful.Color) string {
+	return fmt.Sprintf("#%s%s%s", colorFloatToHex(c.R), colorFloatToHex(c.G), colorFloatToHex(c.B))
+}
+
+func colorFloatToHex(f float64) (s string) {
+	s = strconv.FormatInt(int64(f*255), 16)
+	if len(s) == 1 {
+		s = "0" + s
+	}
+	return
 }
