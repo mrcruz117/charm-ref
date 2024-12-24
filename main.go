@@ -79,6 +79,11 @@ func main() {
 				fmt.Printf("Uh oh, there was an error: %v\n", err)
 				os.Exit(1)
 			}
+		case "screentoggle":
+			if err := commands.RunScreenToggle(); err != nil {
+				fmt.Printf("Uh oh, there was an error: %v\n", err)
+				os.Exit(1)
+			}
 		case "--help", "-h":
 			commands.Help()
 		default:
