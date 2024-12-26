@@ -16,7 +16,13 @@ var helloworldCmd = &cobra.Command{
 	Long: `This command prints 'hello, world' to the console. For example:
 	hello, world!`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("hello, world!")
+		quiet, _ := cmd.Flags().GetBool("quiet")
+		switch {
+		case quiet:
+			fmt.Println("hello, world")
+		default:
+			fmt.Println("hello, world!")
+		}
 	},
 }
 
@@ -31,5 +37,5 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// helloworldCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	helloworldCmd.Flags().BoolP("quiet", "q", false, "Prints the message without an exclamation mark")
 }
