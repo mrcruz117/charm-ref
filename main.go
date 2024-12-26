@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mrcruz117/charm-ref/commands"
+	"github.com/mrcruz117/charm-ref/commands/wizard"
 )
 
 const url = "https://charm.sh/"
@@ -81,6 +82,11 @@ func main() {
 			}
 		case "screentoggle":
 			if err := commands.RunScreenToggle(); err != nil {
+				fmt.Printf("Uh oh, there was an error: %v\n", err)
+				os.Exit(1)
+			}
+		case "wizard":
+			if err := wizard.RunWizard(); err != nil {
 				fmt.Printf("Uh oh, there was an error: %v\n", err)
 				os.Exit(1)
 			}

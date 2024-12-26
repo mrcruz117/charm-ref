@@ -121,9 +121,7 @@ func (m *Main) Next() {
 	}
 }
 
-func main() {
-	// init styles; optional, just showing as a way to organize styles
-	// start bubble tea and init first model
+func RunWizard() error {
 	questions := []Question{newShortQuestion("what is your name?"), newShortQuestion("what is your favourite editor?"), newLongQuestion("what's your favourite quote?")}
 	main := New(questions)
 
@@ -137,4 +135,5 @@ func main() {
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 	}
+	return nil
 }
