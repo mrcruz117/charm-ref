@@ -15,13 +15,18 @@ var helloworldCmd = &cobra.Command{
 	Short: "Prints 'hello, world' to the console",
 	Long: `This command prints 'hello, world' to the console. For example:
 	hello, world!`,
+	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		quiet, _ := cmd.Flags().GetBool("quiet")
+		name := "world"
+		if len(args) > 0 {
+			name = args[0]
+		}
 		switch {
 		case quiet:
-			fmt.Println("hello, world")
+			fmt.Printf("hello, %s\n", name)
 		default:
-			fmt.Println("hello, world!")
+			fmt.Printf("hello, %s!\n", name)
 		}
 	},
 }
@@ -30,10 +35,6 @@ func init() {
 	rootCmd.AddCommand(helloworldCmd)
 
 	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// helloworldCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
