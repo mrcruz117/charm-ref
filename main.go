@@ -6,8 +6,6 @@ import (
 	// "log"
 
 	"github.com/mrcruz117/charm-ref/cmd"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {

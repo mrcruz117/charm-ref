@@ -7,9 +7,10 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	"path/filepath"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/mrcruz117/charm-ref/internal/database"
-
 	"github.com/spf13/cobra"
 )
 
@@ -35,11 +36,17 @@ type config struct {
 }
 
 func InitConfig() *config {
-	db, err := sql.Open("sqlite3", "sqlite.db")
+	dbPath, err := filepath.Abs("db/sqlite.db")
+
+	if err != nil {
+		log.Fatalf("could not get absolute path: %v", err)
+	}
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Fatalf("could not open db: %v", err)
 	}
 	dbQueries := database.New(db)
+
 	return &config{
 		db: dbQueries,
 	}

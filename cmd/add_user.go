@@ -7,10 +7,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/mrcruz117/charm-ref/internal/database"
-
 	"github.com/google/uuid"
-
+	"github.com/mrcruz117/charm-ref/internal/database"
 	"github.com/spf13/cobra"
 )
 
