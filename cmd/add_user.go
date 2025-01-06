@@ -97,28 +97,27 @@ var addUserCmd = &cobra.Command{
 			fmt.Println("Aborted")
 			os.Exit(0)
 		}
-		startTime := time.Now()
 
 		ctx := context.Background()
 		s := spinner.New()
 		s.Title("Creating user...")
 
-		// Define the action to run
+		var user database.User
+		startTime := time.Now()
 		action := func() {
 			// Generate a new UUID for the user ID
 			id := uuid.New().String()
 
 			// Create the user
-			_, err := Cfg.db.CreateUser(ctx, database.CreateUserParams{
+			user, err = Cfg.db.CreateUser(ctx, database.CreateUserParams{
 				ID:        id,
 				FirstName: userForm.FirstName,
 				LastName:  userForm.LastName,
 				Email:     userForm.Email,
 			})
 			if err != nil {
-				log.Printf("failed to create user: %v", err)
+				log.Fatalf("Failed to create user: %v", err)
 			}
-			// return nil
 		}
 
 		// Run the spinner with the action
@@ -127,9 +126,9 @@ var addUserCmd = &cobra.Command{
 			log.Fatalf("Error: %v", err)
 		}
 
-		// fmt.Printf("\nUser created: ID=%s, FirstName=%s, LastName=%s, Email=%s\n", user.ID, user.FirstName, user.LastName, user.Email)
 		endTime := time.Now()
-		fmt.Printf("\n\nTime taken: %v\n", endTime.Sub(startTime))
+		fmt.Printf("\nUser created: ID=%s, FirstName=%s, LastName=%s, Email=%s\n", user.ID, user.FirstName, user.LastName, user.Email)
+		fmt.Printf("\nTime taken: %v\n", endTime.Sub(startTime))
 	},
 }
 
