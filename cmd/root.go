@@ -4,7 +4,11 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"database/sql"
+	"log"
 	"os"
+
+	"github.com/mrcruz117/charm-ref/internal/database"
 
 	"github.com/spf13/cobra"
 )
@@ -26,6 +30,23 @@ to quickly create a Cobra application.`,
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
+type config struct {
+	db *database.Queries
+}
+
+func InitConfig() *config {
+	db, err := sql.Open("sqlite3", "sqlite.db")
+	if err != nil {
+		log.Fatalf("could not open db: %v", err)
+	}
+	dbQueries := database.New(db)
+	return &config{
+		db: dbQueries,
+	}
+}
+
+var Cfg *config
+
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
