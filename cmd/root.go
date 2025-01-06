@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -32,23 +33,32 @@ to quickly create a Cobra application.`,
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 type config struct {
-	db *database.Queries
+	db   *database.Queries
+	conn *sql.DB
 }
 
 func InitConfig() *config {
-	dbPath, err := filepath.Abs("db/sqlite.db")
-
+	// Get the absolute path to the database file
+	dbPath, err := filepath.Abs("./db/sqlite.db")
 	if err != nil {
 		log.Fatalf("could not get absolute path: %v", err)
 	}
+	fmt.Println(dbPath)
+
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Fatalf("could not open db: %v", err)
 	}
 	dbQueries := database.New(db)
-
 	return &config{
-		db: dbQueries,
+		db:   dbQueries,
+		conn: db,
+	}
+}
+
+func (c *config) Close() {
+	if err := c.conn.Close(); err != nil {
+		log.Fatalf("could not close db: %v", err)
 	}
 }
 
