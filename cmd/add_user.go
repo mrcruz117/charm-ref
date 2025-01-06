@@ -11,8 +11,11 @@ import (
 	"time"
 
 	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/huh/spinner"
 	"github.com/google/uuid"
 	"github.com/mrcruz117/charm-ref/internal/database"
+
+	// "github.com/mrcruz117/charm-ref/spinner"
 	"github.com/spf13/cobra"
 )
 
@@ -94,23 +97,39 @@ var addUserCmd = &cobra.Command{
 			fmt.Println("Aborted")
 			os.Exit(0)
 		}
-
-		// Generate a new UUID for the user ID
-		id := uuid.New().String()
-
-		// Create a new user
+		startTime := time.Now()
 
 		ctx := context.Background()
-		user, err := Cfg.db.CreateUser(ctx, database.CreateUserParams{
-			ID:        id,
-			FirstName: userForm.FirstName,
-			LastName:  userForm.LastName,
-			Email:     userForm.Email,
-		})
-		if err != nil {
-			log.Fatalf("Failed to create user: %v", err)
+		s := spinner.New()
+		s.Title("Creating user...")
+
+		// Define the action to run
+		action := func() {
+			// Generate a new UUID for the user ID
+			id := uuid.New().String()
+
+			// Create the user
+			_, err := Cfg.db.CreateUser(ctx, database.CreateUserParams{
+				ID:        id,
+				FirstName: userForm.FirstName,
+				LastName:  userForm.LastName,
+				Email:     userForm.Email,
+			})
+			if err != nil {
+				log.Printf("failed to create user: %v", err)
+			}
+			// return nil
 		}
-		fmt.Printf("User created: ID=%s, FirstName=%s, LastName=%s, Email=%s\n", user.ID, user.FirstName, user.LastName, user.Email)
+
+		// Run the spinner with the action
+		err = s.Action(action).Run()
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+
+		// fmt.Printf("\nUser created: ID=%s, FirstName=%s, LastName=%s, Email=%s\n", user.ID, user.FirstName, user.LastName, user.Email)
+		endTime := time.Now()
+		fmt.Printf("\n\nTime taken: %v\n", endTime.Sub(startTime))
 	},
 }
 

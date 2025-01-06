@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -43,7 +42,6 @@ func InitConfig() *config {
 	if err != nil {
 		log.Fatalf("could not get absolute path: %v", err)
 	}
-	fmt.Println(dbPath)
 
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
