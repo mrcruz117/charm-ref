@@ -3,14 +3,21 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"os"
+	"regexp"
 	"time"
 
+	"github.com/charmbracelet/huh"
 	"github.com/google/uuid"
 	"github.com/mrcruz117/charm-ref/internal/database"
 	"github.com/spf13/cobra"
 )
+
+var base *huh.Theme = huh.ThemeBase()
+var theme *huh.Theme = base
 
 type User struct {
 	ID        uuid.UUID `json:"id"`
@@ -23,14 +30,70 @@ type User struct {
 
 // addUserCmd represents the adduser command
 var addUserCmd = &cobra.Command{
-	Use:   "adduser [first_name] [last_name] [email]",
+	Use:   "adduser",
 	Short: "Add a new user",
 	Long:  `This command adds a new user to the database.`,
-	Args:  cobra.ExactArgs(3),
+	// Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
-		firstName := args[0]
-		lastName := args[1]
-		email := args[2]
+		// type UserArgs struct {
+		// 	FirstName string
+		// 	LastName  string
+		// 	Email     string
+		// }
+
+		userForm := User{}
+		var confirm bool
+
+		form := huh.NewForm(
+			huh.NewGroup(
+				huh.NewInput().
+					Value(&userForm.FirstName).
+					Title("What's your first name?").
+					Placeholder("Homer").
+					Validate(func(s string) error {
+						if s == "" {
+							return errors.New("please enter your first name")
+						}
+						return nil
+					}),
+				// Description("Just first name, please."),
+				huh.NewInput().
+					Value(&userForm.LastName).
+					Title("What's your last name?").
+					Placeholder("Simpson").
+					Validate(func(s string) error {
+						if s == "" {
+							return errors.New("please enter your last name")
+						}
+						return nil
+					}),
+				// Description("Just last name, please."),
+				huh.NewInput().
+					Value(&userForm.Email).
+					Title("What's your email address?").
+					Placeholder("fake@email.com").
+					Validate(func(s string) error {
+						if s == "" {
+							return errors.New("please enter your email address")
+						}
+						if err := ValidateEmail(s); err != nil {
+							return err
+						}
+						return nil
+					}).
+					Description("We'll never share your email with anyone."),
+				huh.NewConfirm().Title("Confirm info is correct?").Value(&confirm).Description("White box is the choice you're selecting"),
+			),
+		)
+		err := form.WithTheme(theme).Run()
+		if err != nil {
+			fmt.Println("Error:", err)
+			os.Exit(1)
+		}
+		if !confirm {
+			fmt.Println("Aborted")
+			os.Exit(0)
+		}
 
 		// Generate a new UUID for the user ID
 		id := uuid.New().String()
@@ -40,9 +103,9 @@ var addUserCmd = &cobra.Command{
 		ctx := context.Background()
 		user, err := Cfg.db.CreateUser(ctx, database.CreateUserParams{
 			ID:        id,
-			FirstName: firstName,
-			LastName:  lastName,
-			Email:     email,
+			FirstName: userForm.FirstName,
+			LastName:  userForm.LastName,
+			Email:     userForm.Email,
 		})
 		if err != nil {
 			log.Fatalf("Failed to create user: %v", err)
@@ -53,4 +116,14 @@ var addUserCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(addUserCmd)
+}
+
+func ValidateEmail(email string) error {
+	// Define a regular expression for validating an email address
+	const emailRegex = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+	re := regexp.MustCompile(emailRegex)
+	if !re.MatchString(email) {
+		return errors.New("invalid email address")
+	}
+	return nil
 }
