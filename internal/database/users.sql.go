@@ -57,6 +57,41 @@ func (q *Queries) DeleteAllUsers(ctx context.Context) error {
 	return err
 }
 
+const getAllUsers = `-- name: GetAllUsers :many
+SELECT id, first_name, last_name, email, created_at, updated_at
+FROM users
+`
+
+func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, getAllUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.FirstName,
+			&i.LastName,
+			&i.Email,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, first_name, last_name, email, created_at, updated_at
 FROM users
