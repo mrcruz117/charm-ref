@@ -10,16 +10,24 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, first_name, last_name, email, created_at, updated_at)
-VALUES (
-    ?,  -- UUID should be generated in application code and passed as a parameter
-    ?,  -- first_name
-    ?,  -- last_name
-    ?,  -- email
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-)
-RETURNING id, first_name, last_name, email, created_at, updated_at
+INSERT INTO
+    users (
+        id,
+        first_name,
+        last_name,
+        email,
+        created_at,
+        updated_at
+    )
+VALUES
+    (
+        ?, -- UUID should be generated in application code and passed as a parameter
+        ?, -- first_name
+        ?, -- last_name
+        ?, -- email
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    ) RETURNING id, first_name, last_name, email, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -58,8 +66,10 @@ func (q *Queries) DeleteAllUsers(ctx context.Context) error {
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
-SELECT id, first_name, last_name, email, created_at, updated_at
-FROM users
+SELECT
+    id, first_name, last_name, email, created_at, updated_at
+FROM
+    users
 `
 
 func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
@@ -93,9 +103,12 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, first_name, last_name, email, created_at, updated_at
-FROM users
-WHERE email = ?
+SELECT
+    id, first_name, last_name, email, created_at, updated_at
+FROM
+    users
+WHERE
+    email = ?
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
