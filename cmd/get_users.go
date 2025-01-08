@@ -8,7 +8,11 @@ import (
 	"os"
 	"time"
 
+	"database/sql"
+
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/mrcruz117/charm-ref/internal/database"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
@@ -23,11 +27,32 @@ var getUsersCmd = &cobra.Command{
 	Use:   "getusers",
 	Short: "Get all users",
 	Long:  `This command shows all users in the database.`,
-	// Args:  cobra.ExactArgs(3),
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		filter, _ := cmd.Flags().GetBool("filter")
 
 		ctx := context.Background()
-		users, err := Cfg.db.GetAllUsers(ctx)
+		var users []database.User
+		var err error
+
+		switch {
+		case filter:
+			filterBy := args[0]
+			fmt.Printf("Filtering by: %s\n", filterBy)
+			FilterUsersParams := database.FilterUsersParams{
+				Column1: sql.NullString{String: filterBy, Valid: true},
+				Column2: sql.NullString{String: filterBy, Valid: true},
+				Column3: sql.NullString{String: filterBy, Valid: true},
+				Column4: sql.NullString{String: filterBy, Valid: true},
+			}
+
+			users, err = Cfg.db.FilterUsers(ctx, FilterUsersParams)
+
+		default:
+			users, err = Cfg.db.GetAllUsers(ctx)
+
+		}
+
 		if err != nil {
 			log.Fatalf("Failed to get users: %v", err)
 		}
@@ -79,6 +104,8 @@ var getUsersCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(getUsersCmd)
+
+	rootCmd.PersistentFlags().BoolP("filter", "f", false, "Filter users")
 }
 
 func (m model) Init() tea.Cmd { return nil }

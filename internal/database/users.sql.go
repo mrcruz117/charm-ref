@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -63,6 +64,60 @@ DELETE FROM users
 func (q *Queries) DeleteAllUsers(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, deleteAllUsers)
 	return err
+}
+
+const filterUsers = `-- name: FilterUsers :many
+SELECT
+    id, first_name, last_name, email, created_at, updated_at
+FROM
+    users
+WHERE
+    id LIKE '%' || ? || '%'
+    OR first_name LIKE '%' || ? || '%'
+    OR last_name LIKE '%' || ? || '%'
+    OR email LIKE '%' || ? || '%'
+`
+
+type FilterUsersParams struct {
+	Column1 sql.NullString
+	Column2 sql.NullString
+	Column3 sql.NullString
+	Column4 sql.NullString
+}
+
+func (q *Queries) FilterUsers(ctx context.Context, arg FilterUsersParams) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, filterUsers,
+		arg.Column1,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.FirstName,
+			&i.LastName,
+			&i.Email,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getAllUsers = `-- name: GetAllUsers :many

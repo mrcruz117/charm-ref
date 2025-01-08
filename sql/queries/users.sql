@@ -32,5 +32,16 @@ SELECT
 FROM
     users;
 
+-- name: FilterUsers :many
+SELECT
+    *
+FROM
+    users
+WHERE
+    id LIKE '%' || ? || '%'
+    OR first_name LIKE '%' || ? || '%'
+    OR last_name LIKE '%' || ? || '%'
+    OR email LIKE '%' || ? || '%';
+
 -- name: DeleteAllUsers :exec
 DELETE FROM users;
