@@ -103,9 +103,9 @@ var getUsersCmd = &cobra.Command{
 }
 
 func init() {
+	getUsersCmd.Flags().BoolP("filter", "f", false, "Filter users")
 	rootCmd.AddCommand(getUsersCmd)
 
-	rootCmd.PersistentFlags().BoolP("filter", "f", false, "Filter users")
 }
 
 func (m model) Init() tea.Cmd { return nil }
